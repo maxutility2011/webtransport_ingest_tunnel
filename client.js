@@ -284,7 +284,27 @@ async function readDatagrams(transport) {
       {
         data.substring(send_ack_pos + send_ack_key.length, data.length);
         let seg_url = "http://localhost:8000/webtransport_ingest_tunnel/" + data.substring(send_ack_pos + send_ack_key.length, data.length);
-        console.log(seg_url)
+        
+        let seg_req = new XMLHttpRequest();
+        seg_req.responseType = 'blob';
+        seg_req.open("GET", seg_url, true); // false for synchronous request
+
+        seg_req.onload = function (e) {
+          if (seg_req.readyState === seg_req.DONE) {
+            if (seg_req.status === 200) {
+              segData = this.response
+              //console.log("Segment downloaded: size = " + segData.byteLength);
+              var recorded_video = document.getElementById('recording');
+              recorded_video.src = URL.createObjectURL(segData);
+              recorded_video.play();
+            }
+            else {
+              console.log("Segment download failed: " + seg_req.status);
+            }
+          }
+        }
+    
+        seg_req.send();
       }
       else {
         console.log("SEND_ACK not found in response");
