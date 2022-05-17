@@ -100,7 +100,13 @@ datagramBuffer = bytearray()
 global payloadBuffer 
 payloadBuffer = bytearray()
 
-shutil.copyfile("playlist.m3u8.orig", "playlist.m3u8")
+#shutil.copyfile("playlist.m3u8.template", "playlist.m3u8")
+
+#def concatTwoFiles(file1, file2, destfile):
+#    with open(destfile, 'wb') as outfile:
+#        for f in [file1, file2]:
+#            with open(f, 'rb') as fd:
+#                shutil.copyfileobj(fd, outfile)
 
 # CounterHandler implements a really simple protocol:
 #   - For every incoming bidirectional stream, it counts bytes it receives on
@@ -120,10 +126,7 @@ class CounterHandler:
 
     def h3_event_received(self, event: H3Event) -> None:
         if isinstance(event, DatagramReceived):
-            print("datagram received: ", len(event.data))
-            payload = str(len(event.data)).encode('ascii')
-
-            #if messageLength_beforeAppend < 1000000:
+            #payload = str(len(event.data)).encode('ascii')
                 
             global datagramBuffer
             datagramBufferLength = len(datagramBuffer)
@@ -134,48 +137,53 @@ class CounterHandler:
             message_payload_size = int(datagramBuffer[datagramBufferLength + 13 : datagramBufferLength + 21])
             last_byte = int(datagramBuffer[datagramBufferLength + 21 : datagramBufferLength + 29])
 
-            #print(message_id)
-            #print(message_payload_size)
-            #print(last_byte)
-
             global payloadBuffer
             payloadBuffer.extend(datagramBuffer[datagramBufferLength + 29 : ])
-
-            #print(len(payloadBuffer), " ", message_payload_size)
 
             if len(payloadBuffer) == message_payload_size:
                 print(len(payloadBuffer), " ", message_payload_size)
                 segmentFileName = "seg_" + str(message_id)
                 webmSegmentFilePath = segmentFileName + ".webm"
-                tsSegmentFilePath = segmentFileName + ".ts"
+                mp4SegmentFilePath = segmentFileName + ".mp4"
 
                 print("Writing ", webmSegmentFilePath, " with ", len(payloadBuffer), " bytes.")
                 segmentFile = open(webmSegmentFilePath, 'wb')
                 segmentFile.write(payloadBuffer)
                 segmentFile.close()
 
-                ffmpeg = subprocess.Popen(["ffmpeg", "-fflags", "+genpts", "-i", webmSegmentFilePath, "-r", "24", tsSegmentFilePath], stdout=subprocess.PIPE, stderr=subprocess.PIPE) 
+                #webmSegmentFilePath_hdr = webmSegmentFilePath + ".1"
+                #concatTwoFiles("video.hdr", webmSegmentFilePath, webmSegmentFilePath_hdr)
+                #cat = subprocess.Popen(["cat", "video.hdr", webmSegmentFilePath, " > ", webmSegmentFilePath_hdr], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+                ffmpeg = subprocess.Popen(["ffmpeg", "-fflags", "+genpts", "-i", webmSegmentFilePath, "-r", "24", mp4SegmentFilePath], stdout=subprocess.PIPE, stderr=subprocess.PIPE) 
 
                 ffmpeg.wait()
                 out, err = ffmpeg.communicate()
                 if ffmpeg.returncode != 0: 
                     print("ffmpeg failed %d %s %s" % (ffmpeg.returncode, out, err))
 
-                print(out)
-                #if "Error:" in out.decode("utf-8"):
-                    #print("Error: Failed to parse MPD file, exiting...")
-                    #exit()
+                #print(out)
 
-                playlistFile = open("playlist.m3u8", "a")
-                playlistFile.write("#EXTINF:2,\n")
-                playlistFile.write(tsSegmentFilePath)
-                playlistFile.write("\n")
-                playlistFile.close()
+                #playlistFile = open("playlist.m3u8", "a")
 
-                #global datagramBuffer 
+                #ffprobe = subprocess.Popen(["ffprobe", "-i", mp4SegmentFilePath, "-v", "quiet", "-show_entries", "format=duration", "-hide_banner", "-of", "default=noprint_wrappers=1:nokey=1"], stdout=subprocess.PIPE, stderr=subprocess.PIPE) 
+                #ffprobe.wait()
+                #out2, err2 = ffprobe.communicate()
+                #print(out2)
+
+                #hls_playlist_extinf = "#EXTINF:" + out2.decode("utf-8")
+                #playlistFile.write(hls_playlist_extinf)
+
+                #playlistFile.write("#EXTINF:10.000,\n")
+                #playlistFile.write(mp4SegmentFilePath)
+                #playlistFile.write("\n")
+                #playlistFile.close()
+
                 datagramBuffer = bytearray()
-                #global payloadBuffer 
                 payloadBuffer = bytearray()
+
+                server_response = "SEND_ACK " + mp4SegmentFilePath 
+                self._http.send_datagram(self._session_id, server_response.encode('ascii'))
             elif len(payloadBuffer) > message_payload_size:
                 print("Error: actual message size is larger than expected message size")
                 exit()

@@ -10,7 +10,7 @@ window.onload = function () {
 
   // get video & audio stream from user
   navigator.mediaDevices.getUserMedia({
-    audio: true,
+    audio: false,
     video: true
   })
   .then(function (stream) {
@@ -28,23 +28,24 @@ window.onload = function () {
   });
 };
 
+recordingInterval = 4000;
 function startRecorderTimer()
 {
   if (!recorderTimer)
   {
-  	recorderTimer = setTimeout(getRecording, 4000); // Recordings have to be at least 4 seconds long, otherwise they won't be playable.
+  	recorderTimer = setTimeout(getRecording, recordingInterval); // Recordings have to be at least 4 seconds long, otherwise they won't be playable.
   }
   else
   {
 	  clearTimeout(recorderTimer);
-	  recorderTimer = setTimeout(getRecording, 4000);
+	  recorderTimer = setTimeout(getRecording, recordingInterval);
   }
 }
 
 function getRecording()
 {
   recorder.requestData();
-  recorderTimer = setTimeout(getRecording, 4000);
+  recorderTimer = setTimeout(getRecording, recordingInterval);
 }
 
 function onRecordingReady(e) {
@@ -53,6 +54,7 @@ function onRecordingReady(e) {
 
   let chunks = []
   chunks.push(e.data);
+  webm_header = e.data.slice(0, 189); 
   let blob = new Blob(chunks, { 'type' : 'video/webm' });
   //console.log("onRecordingReady: blob size: " + blob.size);
 
@@ -60,8 +62,8 @@ function onRecordingReady(e) {
   sendRecording(blob, currentTime);
   //saveRecording(blob, currentTime);
 
-  video.src = URL.createObjectURL(blob);
-  video.play();
+  //video.src = URL.createObjectURL(blob);
+  //video.play();
 }
 
 async function saveRecording(data, currentTime)
@@ -150,9 +152,11 @@ async function connect() {
   document.getElementById('connect').disabled = true;
 }
 
-const maxPacketSize = 1000; // 1222 was used
+const maxPacketSize = 1000; // 1222 was used previously
 const packetHeaderSize = 29;
 const maxPacketPayloadSize = maxPacketSize - packetHeaderSize;
+
+//const ack_received = 0;
 
 const zeroPad = (num, places) => String(num).padStart(places, '0')
 
@@ -273,6 +277,18 @@ async function readDatagrams(transport) {
       }
       let data = decoder.decode(value);
       addToEventLog('Datagram received: ' + data);
+
+      let send_ack_key = "SEND_ACK "
+      let send_ack_pos = data.search(send_ack_key);
+      if (send_ack_pos >= 0)
+      {
+        data.substring(send_ack_pos + send_ack_key.length, data.length);
+        let seg_url = "http://localhost:8000/webtransport_ingest_tunnel/" + data.substring(send_ack_pos + send_ack_key.length, data.length);
+        console.log(seg_url)
+      }
+      else {
+        console.log("SEND_ACK not found in response");
+      }
     }
   } catch (e) {
     addToEventLog('Error while reading datagrams: ' + e, 'error');
