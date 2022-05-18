@@ -16,7 +16,7 @@ window.onload = function () {
   .then(function (stream) {
     liveStream = stream;
 
-    var liveVideo = document.getElementById('live');
+    var liveVideo = document.getElementById('preview');
     //liveVideo.src = URL.createObjectURL(stream);
     liveVideo.srcObject = stream;
     liveVideo.play();
@@ -54,16 +54,44 @@ function onRecordingReady(e) {
 
   let chunks = []
   chunks.push(e.data);
-  webm_header = e.data.slice(0, 189); 
   let blob = new Blob(chunks, { 'type' : 'video/webm' });
   //console.log("onRecordingReady: blob size: " + blob.size);
 
   let currentTime = new Date().getTime();
-  sendRecording(blob, currentTime);
+  //sendRecording(blob, currentTime);
+  uploadRecording(blob);
   //saveRecording(blob, currentTime);
 
   //video.src = URL.createObjectURL(blob);
   //video.play();
+}
+
+async function uploadRecording(blob) {
+  //let uploadFileName = "upload_" + currentTime + ".webm";
+  let data = await blob.arrayBuffer();
+
+  upload_url = "http://localhost:3000/uploadRecording/";
+  var upload_req = new XMLHttpRequest();
+  upload_req.open("POST", upload_url, true);
+
+  upload_req.onload = function (e) {
+    if (upload_req.readyState === upload_req.DONE) {
+      if (upload_req.status === 200) {
+        uploadedFileUrl = this.response;
+
+        console.log("uploadedFileUrl: " + uploadedFileUrl);
+        //console.log("Segment downloaded: size = " + segData.byteLength);
+        //var http_live_video = document.getElementById('http_live');
+        //http_live_video.src = URL.createObjectURL(segData);
+        //http_live_video.play();
+      }
+      else {
+        console.log("Segment download failed: " + upload_req.status);
+      }
+    }
+  }
+
+  upload_req.send(data);
 }
 
 async function saveRecording(data, currentTime)
@@ -205,10 +233,6 @@ async function sendDatagram(data, currT) {
       //await currentTransportDatagramWriter.write(packet_header);
       let outBuffer = _appendBuffer(packet_header, d.subarray(bytesSentTotal, bytesSentTotal + bytesToSend));
       await currentTransportDatagramWriter.write(outBuffer);
-
-      //await currentTransportDatagramWriter.write(d.subarray(bytesSentTotal, bytesSentTotal + bytesToSend));
-      //await currentTransportDatagramWriter.write(d.subarray(0, 1222));
-      //await currentTransportDatagramWriter.write(d);
   
       bytesSentTotal += bytesToSend;
       console.log('Sent ' + bytesToSend + " bytes");
@@ -292,11 +316,11 @@ async function readDatagrams(transport) {
         seg_req.onload = function (e) {
           if (seg_req.readyState === seg_req.DONE) {
             if (seg_req.status === 200) {
-              segData = this.response
+              segData = this.response;
               //console.log("Segment downloaded: size = " + segData.byteLength);
-              var recorded_video = document.getElementById('recording');
-              recorded_video.src = URL.createObjectURL(segData);
-              recorded_video.play();
+              var wt_live_video = document.getElementById('webtransport_live');
+              wt_live_video.src = URL.createObjectURL(segData);
+              wt_live_video.play();
             }
             else {
               console.log("Segment download failed: " + seg_req.status);
