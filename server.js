@@ -4,7 +4,7 @@ const { exec } = require("child_process");
 
 const port = process.env.PORT || 3000
 
-function webm_to_mp4(srcPath, dstPath)
+function webm_to_mp4(srcPath, dstPath, res)
 {
     console.log("srcPath: " + srcPath + " dstPath: " + dstPath);
 
@@ -14,15 +14,21 @@ function webm_to_mp4(srcPath, dstPath)
     exec(ffmpegCmd, (error, stdout, stderr) => {
         if (error) {
             console.log(`error: ${error.message}`);
-            //return error.message;
         }
         if (stderr) {
             console.log(`stderr: ${stderr}`);
-            //return `stderr: ${stderr}`;
         }
 
         console.log(`stdout: ${stdout}`);
-        //return null;
+        
+        // Respond to client with the webm file name.
+        const responseBody = Buffer.from(dstPath, 'utf8');
+
+        res.write(responseBody, 'utf8', () => {
+            console.log("Writing Response Data...");
+            });
+
+        res.end();
     });
 }
 
@@ -33,18 +39,15 @@ const server = http.createServer((req, res) => {
   switch(req.url) {
     case '/uploadRecording/':
         if (req.method == http_post) {
-            console.log("content-length: " + req.headers['content-length']); 
-            //var recordedSegment = [];
+            //console.log("content-length: " + req.headers['content-length']); 
             var recordedSegment = Buffer.from([]); // create a buffer
 
             req.on("data", function (chunk) {
-                //recordedSegment += chunk;
                 recordedSegment = Buffer.concat([recordedSegment,chunk]);
             });
     
             req.on("end", function() {
                 //console.log("recordedSegment length: " + recordedSegment.length);
-                console.log("recordedSegment length: " + recordedSegment.length);
 
                 let currentTime = new Date().getTime();
                 let uploadedFileName = "upload_" + currentTime;
@@ -59,8 +62,9 @@ const server = http.createServer((req, res) => {
                     }
                 });
 
-                webm_to_mp4(webmFilePath, mp4FilePath);
+                webm_to_mp4(webmFilePath, mp4FilePath, res);
 
+                /*
                 // Respond to client with the webm file name.
                 const responseBody = Buffer.from(mp4FilePath, 'utf8');
 
@@ -70,6 +74,7 @@ const server = http.createServer((req, res) => {
                  });
 
                 res.end();
+                */
             });
         }
   }

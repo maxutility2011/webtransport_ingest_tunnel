@@ -60,10 +60,7 @@ function onRecordingReady(e) {
   let currentTime = new Date().getTime();
   //sendRecording(blob, currentTime);
   uploadRecording(blob);
-  saveRecording(blob, currentTime);
-
-  //video.src = URL.createObjectURL(blob);
-  //video.play();
+  //saveRecording(blob, currentTime);
 }
 
 async function uploadRecording(blob) {
@@ -77,9 +74,11 @@ async function uploadRecording(blob) {
   upload_req.onload = function (e) {
     if (upload_req.readyState === upload_req.DONE) {
       if (upload_req.status === 200) {
-        uploadedFileUrl = this.response;
+        mp4FileUrl = this.response;
+        console.log("uploadedFileUrl: " + mp4FileUrl);
 
-        console.log("uploadedFileUrl: " + uploadedFileUrl);
+        let rec_url = "http://localhost:8000/webtransport_ingest_tunnel/" + mp4FileUrl;
+        downloadAndPlayMp4Recording(rec_url, "http_live");
         //console.log("Segment downloaded: size = " + segData.byteLength);
         //var http_live_video = document.getElementById('http_live');
         //http_live_video.src = URL.createObjectURL(segData);
@@ -115,6 +114,30 @@ async function saveRecording(data, currentTime)
 async function sendRecording(blob, currentTime) {
   let data = await blob.arrayBuffer();
   sendDatagram(data, currentTime);
+}
+
+function downloadAndPlayMp4Recording(rec_url, video_element_id)
+{
+  let rec_req = new XMLHttpRequest();
+  rec_req.responseType = 'blob';
+  rec_req.open("GET", rec_url, true); // false for synchronous request
+
+  rec_req.onload = function (e) {
+    if (rec_req.readyState === rec_req.DONE) {
+      if (rec_req.status === 200) {
+        let recData = this.response;
+        //console.log("Segment downloaded: size = " + segData.byteLength);
+        var video = document.getElementById(video_element_id);
+        video.src = URL.createObjectURL(recData);
+        video.play();
+      }
+      else {
+        console.log("Segment download failed: " + rec_req.status);
+      }
+    }
+  }
+
+  rec_req.send();
 }
 
 function startStreaming() {
@@ -183,8 +206,6 @@ async function connect() {
 const maxPacketSize = 1000; // 1222 was used previously
 const packetHeaderSize = 29;
 const maxPacketPayloadSize = maxPacketSize - packetHeaderSize;
-
-//const ack_received = 0;
 
 const zeroPad = (num, places) => String(num).padStart(places, '0')
 
@@ -307,8 +328,11 @@ async function readDatagrams(transport) {
       if (send_ack_pos >= 0)
       {
         data.substring(send_ack_pos + send_ack_key.length, data.length);
-        let seg_url = "http://localhost:8000/webtransport_ingest_tunnel/" + data.substring(send_ack_pos + send_ack_key.length, data.length);
+        let rec_url = "http://localhost:8000/webtransport_ingest_tunnel/" + data.substring(send_ack_pos + send_ack_key.length, data.length);
         
+        downloadAndPlayMp4Recording(rec_url, "webtransport_live");
+
+        /*
         let seg_req = new XMLHttpRequest();
         seg_req.responseType = 'blob';
         seg_req.open("GET", seg_url, true); // false for synchronous request
@@ -329,6 +353,7 @@ async function readDatagrams(transport) {
         }
     
         seg_req.send();
+        */
       }
       else {
         console.log("SEND_ACK not found in response");
