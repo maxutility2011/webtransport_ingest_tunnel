@@ -3,6 +3,7 @@
 
 let currentTransport, streamNumber, currentTransportDatagramWriter;
 var startButton, stopButton, recorder, liveStream, recorderTimer = null;
+var disableEventLog = 1;
 
 window.onload = function () {
   startButton = document.getElementById('start');
@@ -17,7 +18,6 @@ window.onload = function () {
     liveStream = stream;
 
     var liveVideo = document.getElementById('preview');
-    //liveVideo.src = URL.createObjectURL(stream);
     liveVideo.srcObject = stream;
     liveVideo.play();
 
@@ -28,7 +28,7 @@ window.onload = function () {
   });
 };
 
-recordingInterval = 4000;
+recordingInterval = 20000;
 function startRecorderTimer()
 {
   if (!recorderTimer)
@@ -58,9 +58,10 @@ function onRecordingReady(e) {
   //console.log("onRecordingReady: blob size: " + blob.size);
 
   let currentTime = new Date().getTime();
-  //sendRecording(blob, currentTime);
-  uploadRecording(blob);
-  //saveRecording(blob, currentTime);
+  sendRecording(blob, currentTime);
+  //uploadRecording(blob);
+
+  //saveRecording(blob, currentTime); // Debugging
 }
 
 async function uploadRecording(blob) {
@@ -79,10 +80,6 @@ async function uploadRecording(blob) {
 
         let rec_url = "http://localhost:8000/webtransport_ingest_tunnel/" + mp4FileUrl;
         downloadAndPlayMp4Recording(rec_url, "http_live");
-        //console.log("Segment downloaded: size = " + segData.byteLength);
-        //var http_live_video = document.getElementById('http_live');
-        //http_live_video.src = URL.createObjectURL(segData);
-        //http_live_video.play();
       }
       else {
         console.log("Segment download failed: " + upload_req.status);
@@ -331,29 +328,6 @@ async function readDatagrams(transport) {
         let rec_url = "http://localhost:8000/webtransport_ingest_tunnel/" + data.substring(send_ack_pos + send_ack_key.length, data.length);
         
         downloadAndPlayMp4Recording(rec_url, "webtransport_live");
-
-        /*
-        let seg_req = new XMLHttpRequest();
-        seg_req.responseType = 'blob';
-        seg_req.open("GET", seg_url, true); // false for synchronous request
-
-        seg_req.onload = function (e) {
-          if (seg_req.readyState === seg_req.DONE) {
-            if (seg_req.status === 200) {
-              segData = this.response;
-              //console.log("Segment downloaded: size = " + segData.byteLength);
-              var wt_live_video = document.getElementById('webtransport_live');
-              wt_live_video.src = URL.createObjectURL(segData);
-              wt_live_video.play();
-            }
-            else {
-              console.log("Segment download failed: " + seg_req.status);
-            }
-          }
-        }
-    
-        seg_req.send();
-        */
       }
       else {
         console.log("SEND_ACK not found in response");
@@ -404,6 +378,10 @@ async function readFromIncomingStream(stream, number) {
 }
 
 function addToEventLog(text, severity = 'info') {
+  if (disableEventLog == 1) {
+    return;
+  }
+
   let log = document.getElementById('event-log');
   let mostRecentEntry = log.lastElementChild;
   let entry = document.createElement('li');

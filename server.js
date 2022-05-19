@@ -63,18 +63,6 @@ const server = http.createServer((req, res) => {
                 });
 
                 webm_to_mp4(webmFilePath, mp4FilePath, res);
-
-                /*
-                // Respond to client with the webm file name.
-                const responseBody = Buffer.from(mp4FilePath, 'utf8');
-
-                //res.writeHead(200, { "Content-Type": "text/plain" });
-                res.write(responseBody, 'utf8', () => {
-                    console.log("Writing Response Data...");
-                 });
-
-                res.end();
-                */
             });
         }
   }
