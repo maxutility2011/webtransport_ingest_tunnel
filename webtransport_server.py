@@ -151,10 +151,6 @@ class CounterHandler:
                 segmentFile.write(payloadBuffer)
                 segmentFile.close()
 
-                #webmSegmentFilePath_hdr = webmSegmentFilePath + ".1"
-                #concatTwoFiles("video.hdr", webmSegmentFilePath, webmSegmentFilePath_hdr)
-                #cat = subprocess.Popen(["cat", "video.hdr", webmSegmentFilePath, " > ", webmSegmentFilePath_hdr], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
                 ffmpeg = subprocess.Popen(["ffmpeg", "-fflags", "+genpts", "-i", webmSegmentFilePath, "-r", "24", mp4SegmentFilePath], stdout=subprocess.PIPE, stderr=subprocess.PIPE) 
 
                 ffmpeg.wait()

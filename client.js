@@ -60,15 +60,15 @@ function onRecordingReady(e) {
   let currentTime = new Date().getTime();
   //sendRecording(blob, currentTime);
   uploadRecording(blob);
-  //saveRecording(blob, currentTime);
+  saveRecording(blob, currentTime);
 
   //video.src = URL.createObjectURL(blob);
   //video.play();
 }
 
 async function uploadRecording(blob) {
-  //let uploadFileName = "upload_" + currentTime + ".webm";
   let data = await blob.arrayBuffer();
+  console.log("recording size: " + blob.size);
 
   upload_url = "http://localhost:3000/uploadRecording/";
   var upload_req = new XMLHttpRequest();
