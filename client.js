@@ -28,7 +28,7 @@ window.onload = function () {
   });
 };
 
-recordingInterval = 20000;
+recordingInterval = 4000;
 function startRecorderTimer()
 {
   if (!recorderTimer)
